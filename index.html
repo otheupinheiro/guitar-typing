@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Touch Typing Guitar Hero</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #09090b;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .arcade-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Neon glow effects */
+        .neon-glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+        .neon-glow-orange { box-shadow: 0 0 15px rgba(249, 115, 22, 0.6); }
+        .neon-glow-yellow { box-shadow: 0 0 15px rgba(234, 179, 8, 0.6); }
+        .neon-glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.6); }
+        .neon-glow-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.6); }
+        .neon-glow-indigo { box-shadow: 0 0 15px rgba(99, 102, 241, 0.6); }
+        .neon-glow-purple { box-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+        .neon-glow-pink { box-shadow: 0 0 15px rgba(236, 72, 153, 0.6); }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        @keyframes heartPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .heart-pulse {
+            animation: heartPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes damageShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .damage-shake {
+            animation: damageShake 0.25s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 md:p-4 select-none">
+
+    <!-- Header / HUD -->
+    <header class="w-full max-w-5xl flex flex-wrap justify-between items-center bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-4 shadow-2xl mb-2">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center neon-glow-blue">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div>
+                <h1 class="arcade-font text-lg md:text-xl font-black tracking-wider bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 bg-clip-text text-transparent">TYPE HERO</h1>
+                <p class="text-xs text-slate-400">Toque Certo • Dedo Certo</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3 md:space-x-5 my-2 md:my-0">
+            <div class="text-center">
+                <span class="block text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Fase / Nível</span>
+                <span id="level-display" class="arcade-font text-xs md:text-sm font-bold text-yellow-400 uppercase">Iniciante (Fase 1)</span>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Vidas</span>
+                <div id="lives-display" class="flex items-center justify-center space-x-1 py-0.5 min-w-[70px]">
+                    <!-- Corações gerados dinamicamente via updateHUD() -->
+                </div>
+                <!-- Barra de progresso para regeneração a cada 6 acertos -->
+                <div class="flex items-center justify-center space-x-1 mt-0.5" title="Regenera 1 vida a cada 6 acertos consecutivos">
+                    <div class="w-14 bg-slate-800/90 rounded-full h-1.5 overflow-hidden border border-slate-700/60">
+                        <div id="heal-progress-bar" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                    <span id="heal-progress-text" class="text-[9px] font-bold text-emerald-400 tracking-tighter">0/6</span>
+                </div>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Pontos</span>
+                <span id="score-display" class="arcade-font text-lg md:text-2xl font-bold text-cyan-400">0</span>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Combo</span>
+                <span id="combo-display" class="arcade-font text-lg md:text-2xl font-bold text-pink-400">0x</span>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Precisão</span>
+                <span id="acc-display" class="arcade-font text-lg md:text-2xl font-bold text-emerald-400">100%</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <!-- Seletor Rápido de Teclado no HUD -->
+            <div class="flex items-center bg-slate-950/70 border border-slate-800 rounded-xl p-1 gap-1 text-[11px]">
+                <button id="header-layout-abnt2" onclick="setLayout('abnt2')" title="Layout ABNT2 (Brasil com Ç)" class="px-2 py-1 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500 font-bold transition-all">🇧🇷 ABNT2</button>
+                <button id="header-layout-us" onclick="setLayout('us')" title="Layout US (Internacional com ;)" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:text-slate-200">🇺🇸 US</button>
+                <button id="header-layout-dvorak" onclick="setLayout('dvorak')" title="Layout Dvorak" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:text-slate-200">⚡ Dvorak</button>
+            </div>
+
+            <button id="audio-toggle-btn" onclick="toggleMute()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all flex items-center space-x-1">
+                <span id="audio-icon">🔊</span>
+            </button>
+            <button id="start-btn" onclick="startGame()" class="arcade-font px-4 md:px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs md:text-sm tracking-wider shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95">INICIAR</button>
+            <button id="pause-btn" onclick="togglePause()" class="hidden px-3 md:px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs md:text-sm border border-slate-700 transition-all">Pausar</button>
+        </div>
+    </header>
+
+        <!-- Main Game Arena -->
+    <main id="game-arena" class="relative w-full max-w-3xl h-[480px] bg-slate-950/90 border-2 border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl flex flex-col mx-auto transition-all duration-150">
+        
+        <!-- Background Grid Lines -->
+        <div class="absolute inset-0 flex justify-between pointer-events-none opacity-20 px-8">
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+            <div class="w-px h-full bg-slate-700"></div>
+        </div>
+
+        <!-- 8 Lanes Container com margem interna para centralizar e aproximar as pistas -->
+        <div id="lanes-container" class="absolute inset-x-8 inset-y-0 grid grid-cols-8 z-10">
+            <!-- Pista 0: Dedo Mínimo Esq -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-red-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 1: Dedo Anelar Esq -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-orange-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 2: Dedo Médio Esq -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-yellow-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 3: Dedo Indicador Esq -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-green-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 4: Dedo Indicador Dir -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-blue-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 5: Dedo Médio Dir -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-indigo-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 6: Dedo Anelar Dir -->
+            <div class="relative border-r border-slate-900/50 flex flex-col items-center">
+                <div class="absolute inset-0 bg-purple-500/5 lane-bg"></div>
+            </div>
+            <!-- Pista 7: Dedo Mínimo Dir -->
+            <div class="relative flex flex-col items-center">
+                <div class="absolute inset-0 bg-pink-500/5 lane-bg"></div>
+            </div>
+        </div>
+
+        <!-- Hit Zone (Linha de Acerto) -->
+        <div id="hit-zone-container" class="absolute bottom-12 left-0 right-0 h-14 bg-slate-900/60 border-y border-slate-700/50 grid grid-cols-8 z-20 pointer-events-none backdrop-blur-sm">
+            <!-- 8 Hit Targets correspondentes às colunas (atualizados dinamicamente pelo layout) -->
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-0" class="text-xs font-bold text-red-400 bg-red-950/80 px-2 py-1 rounded border border-red-800/50">Q / A</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-1" class="text-xs font-bold text-orange-400 bg-orange-950/80 px-2 py-1 rounded border border-orange-800/50">W / S</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-2" class="text-xs font-bold text-yellow-400 bg-yellow-950/80 px-2 py-1 rounded border border-yellow-800/50">E / D</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-3" class="text-xs font-bold text-green-400 bg-green-950/80 px-2 py-1 rounded border border-green-800/50">R / F</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-4" class="text-xs font-bold text-blue-400 bg-blue-950/80 px-2 py-1 rounded border border-blue-800/50">U / J</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-5" class="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2 py-1 rounded border border-indigo-800/50">I / K</span></div>
+            <div class="flex items-center justify-center border-r border-slate-800"><span id="hit-label-6" class="text-xs font-bold text-purple-400 bg-purple-950/80 px-2 py-1 rounded border border-purple-800/50">O / L</span></div>
+            <div class="flex items-center justify-center"><span id="hit-label-7" class="text-xs font-bold text-pink-400 bg-pink-950/80 px-2 py-1 rounded border border-pink-800/50">P / Ç</span></div>
+        </div>
+
+        <!-- Feedback Overlay (PERFECT, GOOD, MISS) -->
+        <div id="feedback-container" class="absolute bottom-28 left-0 right-0 flex justify-center items-center z-30 pointer-events-none">
+            <span id="feedback-text" class="arcade-font text-2xl font-black tracking-widest opacity-0 transition-opacity duration-150 scale-110">PRONTO</span>
+        </div>
+
+        <!-- Start Screen / Game Over Screen Overlay -->
+        <div id="overlay-screen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-40 flex flex-col items-center justify-center text-center p-4 md:p-6 overflow-y-auto">
+            <h2 id="overlay-title" class="arcade-font text-2xl md:text-4xl font-black mb-1 bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 bg-clip-text text-transparent">TOUCH TYPING HERO</h2>
+            <p id="overlay-desc" class="text-xs md:text-sm text-slate-300 max-w-lg mb-3 leading-relaxed">
+                Escolha o layout, a dificuldade e posicione seus dedos na linha de descanso (<span id="home-row-guide-text" class="text-cyan-400 font-bold">ASDF JKLÇ</span>).
+            </p>
+
+            <!-- Seletor de Layout de Teclado -->
+            <div id="layout-selector-container" class="flex flex-col items-center mb-3">
+                <span class="text-[10px] md:text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Layout do Teclado</span>
+                <div class="flex items-center justify-center gap-1.5 md:gap-2">
+                    <button onclick="setLayout('abnt2')" id="overlay-layout-abnt2" class="px-3 py-1.5 rounded-xl border border-cyan-400 bg-cyan-950/90 text-cyan-300 font-bold text-xs ring-2 ring-cyan-500/40 shadow-lg transition-all">
+                        🇧🇷 ABNT2<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Brasil (ASDF JKLÇ)</span>
+                    </button>
+                    <button onclick="setLayout('us')" id="overlay-layout-us" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-slate-800 hover:text-slate-200 transition-all">
+                        🇺🇸 US QWERTY<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Internacional (ASDF JKL;)</span>
+                    </button>
+                    <button onclick="setLayout('dvorak')" id="overlay-layout-dvorak" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-slate-800 hover:text-slate-200 transition-all">
+                        ⚡ DVORAK<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Alternativo (AOEU HTNS)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Difficulty Selector -->
+            <div id="diff-selector-container" class="flex items-center justify-center gap-1.5 md:gap-2 mb-3">
+                <button onclick="setDifficulty('easy')" id="diff-btn-easy" class="diff-btn px-3 md:px-4 py-2 rounded-xl border border-emerald-500/50 bg-emerald-950/80 text-emerald-400 font-bold text-xs hover:bg-emerald-900/50 transition-all">
+                    🌱 INICIANTE<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Linha Base</span>
+                </button>
+                <button onclick="setDifficulty('medium')" id="diff-btn-medium" class="diff-btn px-3 md:px-4 py-2 rounded-xl border border-yellow-500/50 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-yellow-900/50 transition-all">
+                    ⚡ MÉDIO<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Teclas Superiores</span>
+                </button>
+                <button onclick="setDifficulty('hard')" id="diff-btn-hard" class="diff-btn px-3 md:px-4 py-2 rounded-xl border border-rose-500/50 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-rose-900/50 transition-all">
+                    🔥 AVANÇADO<br><span class="text-[9px] md:text-[10px] font-normal opacity-80">Teclado Completo</span>
+                </button>
+            </div>
+
+            <!-- Dica de Regeneração de Vida -->
+            <div class="flex items-center justify-center gap-1.5 mb-3 text-[10px] md:text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-full">
+                <span>💚 <b>Regeneração:</b> A cada <b>6 acertos consecutivos</b>, recupera <b>+1 Vida</b> (máx. 3)!</span>
+            </div>
+
+            <!-- Painel de Estatísticas Finais de Game Over (exibido apenas ao perder as 3 vidas) -->
+            <div id="game-over-summary" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 w-full max-w-lg mb-3 bg-slate-900/90 p-3.5 rounded-xl border border-rose-500/40 text-center shadow-lg shadow-rose-950/40">
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Pontuação</span>
+                    <span id="final-score" class="arcade-font text-base md:text-xl font-bold text-cyan-400">0</span>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Fase Final</span>
+                    <span id="final-phase" class="arcade-font text-base md:text-xl font-bold text-yellow-400">Fase 1</span>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Maior Combo</span>
+                    <span id="final-combo" class="arcade-font text-base md:text-xl font-bold text-pink-400">0x</span>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Precisão</span>
+                    <span id="final-acc" class="arcade-font text-base md:text-xl font-bold text-emerald-400">100%</span>
+                </div>
+            </div>
+
+            <div id="finger-guide-box" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-left text-[11px] md:text-xs text-slate-400 bg-slate-900/80 p-3 rounded-xl border border-slate-800 mb-3 max-w-lg w-full">
+                <!-- Preenchido dinamicamente de acordo com o layout ativo -->
+            </div>
+
+            <button id="overlay-action-btn" onclick="startGame()" class="arcade-font px-7 md:px-8 py-2.5 md:py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-sm md:text-base tracking-wider shadow-xl shadow-cyan-500/30 transition-all transform hover:scale-105 active:scale-95">COMEÇAR AGORA</button>
+        </div>
+
+    </main>
+
+    <!-- Virtual Keyboard Guide (Rodapé) -->
+    <footer class="w-full max-w-5xl bg-slate-900/80 border border-slate-800 backdrop-blur-md rounded-2xl p-4 shadow-xl mt-2 flex flex-col items-center">
+        <span class="text-xs uppercase tracking-wider text-slate-400 mb-2 font-semibold">Guia de Teclado & Posicionamento dos Dedos</span>
+        
+        <div class="flex flex-wrap justify-center gap-1.5 md:gap-2 w-full max-w-3xl">
+            <!-- Teclas do Teclado Virtual com Cores Dedicadas -->
+            <div id="key-Q" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-red-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-red-400">Q</span>
+                <span class="text-[9px] text-slate-500">Mín</span>
+            </div>
+            <div id="key-W" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-orange-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-orange-400">W</span>
+                <span class="text-[9px] text-slate-500">Ane</span>
+            </div>
+            <div id="key-E" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-yellow-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-yellow-400">E</span>
+                <span class="text-[9px] text-slate-500">Méd</span>
+            </div>
+            <div id="key-R" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-green-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-green-400">R</span>
+                <span class="text-[9px] text-slate-500">Ind</span>
+            </div>
+            <div class="w-2"></div>
+            <div id="key-U" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-blue-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-blue-400">U</span>
+                <span class="text-[9px] text-slate-500">Ind</span>
+            </div>
+            <div id="key-I" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-indigo-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-indigo-400">I</span>
+                <span class="text-[9px] text-slate-500">Méd</span>
+            </div>
+            <div id="key-O" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-purple-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-purple-400">O</span>
+                <span class="text-[9px] text-slate-500">Ane</span>
+            </div>
+            <div id="key-P" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-pink-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-pink-400">P</span>
+                <span class="text-[9px] text-slate-500">Mín</span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-1.5 md:gap-2 w-full max-w-3xl mt-1.5">
+            <div id="key-A" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-red-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-red-400">A</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-S" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-orange-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-orange-400">S</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-D" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-yellow-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-yellow-400">D</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-F" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-green-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-green-400">F</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div class="w-2"></div>
+            <div id="key-J" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-blue-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-blue-400">J</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-K" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-indigo-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-indigo-400">K</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-L" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-purple-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-purple-400">L</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+            <div id="key-SEMICOLON" class="key-box flex-1 min-w-[32px] h-11 bg-slate-800 border-2 border-pink-500/40 rounded-lg flex flex-col items-center justify-center transition-all duration-75">
+                <span class="text-xs font-bold text-pink-400">Ç</span>
+                <span class="text-[9px] text-slate-500">Home</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Game Engine -->
+    <script>
+        // Mapeamento de Layouts de Teclado
+        const keyboardLayouts = {
+            abnt2: {
+                id: 'abnt2',
+                name: 'ABNT2 (Brasil)',
+                flag: '🇧🇷',
+                homeRowDescription: 'ASDF JKLÇ',
+                hitZoneLabels: ['Q / A', 'W / S', 'E / D', 'R / F', 'U / J', 'I / K', 'O / L', 'P / Ç'],
+                easyKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', 'ç'],
+                mediumKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', 'ç', 'q', 'w', 'e', 'r', 'u', 'i', 'o', 'p'],
+                hardKeys: ['q', 'a', 'z', 'w', 's', 'x', 'e', 'd', 'c', 'r', 'f', 'v', 't', 'g', 'b', 'u', 'j', 'm', 'y', 'h', 'n', 'i', 'k', ',', 'o', 'l', '.', 'p', 'ç', ';', '/'],
+                keyToLaneMap: {
+                    'q': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'a': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'z': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'w': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    's': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'x': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'e': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'd': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'c': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'r': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'f': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'v': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    't': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'g': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'b': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'y': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'h': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'n': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'u': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'j': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'm': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'i': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'k': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    ',': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'o': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'l': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    '.': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'p': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    'ç': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    ';': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    '/': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' }
+                },
+                fingerGuide: [
+                    '🔴 Mínimo Esq: <b class="text-red-400">Q, A, Z</b>',
+                    '🟠 Anelar Esq: <b class="text-orange-400">W, S, X</b>',
+                    '🟡 Médio Esq: <b class="text-yellow-400">E, D, C</b>',
+                    '🟢 Indicador Esq: <b class="text-green-400">R, F, V, T, G, B</b>',
+                    '🔵 Indicador Dir: <b class="text-blue-400">Y, H, N, U, J, M</b>',
+                    '🟣 Médio Dir: <b class="text-indigo-400">I, K, ,</b>',
+                    '🟪 Anelar Dir: <b class="text-purple-400">O, L, .</b>',
+                    '🌸 Mínimo Dir: <b class="text-pink-400">P, Ç, /</b>'
+                ],
+                virtualKeys: {
+                    top: [
+                        { id: 'key-Q', label: 'Q', sub: 'Mín' },
+                        { id: 'key-W', label: 'W', sub: 'Ane' },
+                        { id: 'key-E', label: 'E', sub: 'Méd' },
+                        { id: 'key-R', label: 'R', sub: 'Ind' },
+                        { id: 'key-U', label: 'U', sub: 'Ind' },
+                        { id: 'key-I', label: 'I', sub: 'Méd' },
+                        { id: 'key-O', label: 'O', sub: 'Ane' },
+                        { id: 'key-P', label: 'P', sub: 'Mín' }
+                    ],
+                    home: [
+                        { id: 'key-A', label: 'A', sub: 'Home' },
+                        { id: 'key-S', label: 'S', sub: 'Home' },
+                        { id: 'key-D', label: 'D', sub: 'Home' },
+                        { id: 'key-F', label: 'F', sub: 'Home' },
+                        { id: 'key-J', label: 'J', sub: 'Home' },
+                        { id: 'key-K', label: 'K', sub: 'Home' },
+                        { id: 'key-L', label: 'L', sub: 'Home' },
+                        { id: 'key-SEMICOLON', label: 'Ç', sub: 'Home' }
+                    ]
+                }
+            },
+            us: {
+                id: 'us',
+                name: 'US (Internacional)',
+                flag: '🇺🇸',
+                homeRowDescription: 'ASDF JKL;',
+                hitZoneLabels: ['Q / A', 'W / S', 'E / D', 'R / F', 'U / J', 'I / K', 'O / L', 'P / ;'],
+                easyKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'],
+                mediumKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';', 'q', 'w', 'e', 'r', 'u', 'i', 'o', 'p'],
+                hardKeys: ['q', 'a', 'z', 'w', 's', 'x', 'e', 'd', 'c', 'r', 'f', 'v', 't', 'g', 'b', 'u', 'j', 'm', 'y', 'h', 'n', 'i', 'k', ',', 'o', 'l', '.', 'p', ';', "'", '/'],
+                keyToLaneMap: {
+                    'q': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'a': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'z': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'w': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    's': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'x': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'e': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'd': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'c': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'r': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'f': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'v': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    't': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'g': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'b': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'y': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'h': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'n': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'u': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'j': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'm': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'i': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'k': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    ',': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'o': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'l': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    '.': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'p': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    ';': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    "'": { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    '/': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' }
+                },
+                fingerGuide: [
+                    '🔴 Mínimo Esq: <b class="text-red-400">Q, A, Z</b>',
+                    '🟠 Anelar Esq: <b class="text-orange-400">W, S, X</b>',
+                    '🟡 Médio Esq: <b class="text-yellow-400">E, D, C</b>',
+                    '🟢 Indicador Esq: <b class="text-green-400">R, F, V, T, G, B</b>',
+                    '🔵 Indicador Dir: <b class="text-blue-400">Y, H, N, U, J, M</b>',
+                    '🟣 Médio Dir: <b class="text-indigo-400">I, K, ,</b>',
+                    '🟪 Anelar Dir: <b class="text-purple-400">O, L, .</b>',
+                    '🌸 Mínimo Dir: <b class="text-pink-400">P, ;, /</b>'
+                ],
+                virtualKeys: {
+                    top: [
+                        { id: 'key-Q', label: 'Q', sub: 'Mín' },
+                        { id: 'key-W', label: 'W', sub: 'Ane' },
+                        { id: 'key-E', label: 'E', sub: 'Méd' },
+                        { id: 'key-R', label: 'R', sub: 'Ind' },
+                        { id: 'key-U', label: 'U', sub: 'Ind' },
+                        { id: 'key-I', label: 'I', sub: 'Méd' },
+                        { id: 'key-O', label: 'O', sub: 'Ane' },
+                        { id: 'key-P', label: 'P', sub: 'Mín' }
+                    ],
+                    home: [
+                        { id: 'key-A', label: 'A', sub: 'Home' },
+                        { id: 'key-S', label: 'S', sub: 'Home' },
+                        { id: 'key-D', label: 'D', sub: 'Home' },
+                        { id: 'key-F', label: 'F', sub: 'Home' },
+                        { id: 'key-J', label: 'J', sub: 'Home' },
+                        { id: 'key-K', label: 'K', sub: 'Home' },
+                        { id: 'key-L', label: 'L', sub: 'Home' },
+                        { id: 'key-SEMICOLON', label: ';', sub: 'Home' }
+                    ]
+                }
+            },
+            dvorak: {
+                id: 'dvorak',
+                name: 'Dvorak',
+                flag: '⚡',
+                homeRowDescription: 'AOEU HTNS',
+                hitZoneLabels: ["' / A", ', / O', '. / E', 'P / U', 'F / H', 'G / T', 'C / N', 'R / S'],
+                easyKeys: ['a', 'o', 'e', 'u', 'h', 't', 'n', 's'],
+                mediumKeys: ['a', 'o', 'e', 'u', 'h', 't', 'n', 's', "'", ',', '.', 'p', 'f', 'g', 'c', 'r'],
+                hardKeys: ["'", 'a', ';', ',', 'o', 'q', '.', 'e', 'j', 'p', 'u', 'k', 'y', 'i', 'x', 'f', 'd', 'b', 'g', 'h', 'm', 'c', 't', 'w', 'r', 'n', 'v', 'l', 's', 'z'],
+                keyToLaneMap: {
+                    "'": { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    'a': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    ';': { id: 0, color: 'bg-red-500/80 text-white border-red-300' },
+                    ',': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'o': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    'q': { id: 1, color: 'bg-orange-500/80 text-white border-orange-300' },
+                    '.': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'e': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'j': { id: 2, color: 'bg-yellow-500/80 text-white border-yellow-300' },
+                    'p': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'u': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'k': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'y': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'i': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'x': { id: 3, color: 'bg-green-500/80 text-white border-green-300' },
+                    'f': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'h': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'd': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'b': { id: 4, color: 'bg-blue-500/80 text-white border-blue-300' },
+                    'g': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    't': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'm': { id: 5, color: 'bg-indigo-500/80 text-white border-indigo-300' },
+                    'c': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'n': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'w': { id: 6, color: 'bg-purple-500/80 text-white border-purple-300' },
+                    'r': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    'l': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    's': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    'z': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' },
+                    'v': { id: 7, color: 'bg-pink-500/80 text-white border-pink-300' }
+                },
+                fingerGuide: [
+                    "🔴 Mínimo Esq: <b class=\"text-red-400\">', A, ;</b>",
+                    '🟠 Anelar Esq: <b class="text-orange-400">,, O, Q</b>',
+                    '🟡 Médio Esq: <b class="text-yellow-400">., E, J</b>',
+                    '🟢 Indicador Esq: <b class="text-green-400">P, U, K, Y, I, X</b>',
+                    '🔵 Indicador Dir: <b class="text-blue-400">F, H, D, B</b>',
+                    '🟣 Médio Dir: <b class="text-indigo-400">G, T, M</b>',
+                    '🟪 Anelar Dir: <b class="text-purple-400">C, N, W</b>',
+                    '🌸 Mínimo Dir: <b class="text-pink-400">R, S, L, Z, V</b>'
+                ],
+                virtualKeys: {
+                    top: [
+                        { id: 'key-Q', label: "'", sub: 'Mín' },
+                        { id: 'key-W', label: ',', sub: 'Ane' },
+                        { id: 'key-E', label: '.', sub: 'Méd' },
+                        { id: 'key-R', label: 'P', sub: 'Ind' },
+                        { id: 'key-U', label: 'F', sub: 'Ind' },
+                        { id: 'key-I', label: 'G', sub: 'Méd' },
+                        { id: 'key-O', label: 'C', sub: 'Ane' },
+                        { id: 'key-P', label: 'R', sub: 'Mín' }
+                    ],
+                    home: [
+                        { id: 'key-A', label: 'A', sub: 'Home' },
+                        { id: 'key-S', label: 'O', sub: 'Home' },
+                        { id: 'key-D', label: 'E', sub: 'Home' },
+                        { id: 'key-F', label: 'U', sub: 'Home' },
+                        { id: 'key-J', label: 'H', sub: 'Home' },
+                        { id: 'key-K', label: 'T', sub: 'Home' },
+                        { id: 'key-L', label: 'N', sub: 'Home' },
+                        { id: 'key-SEMICOLON', label: 'S', sub: 'Home' }
+                    ]
+                }
+            }
+        };
+
+        let currentLayout = 'abnt2';
+
+        const difficultyPresets = {
+            easy: {
+                name: 'Iniciante',
+                speed: 2.5,
+                spawnRate: 1200,
+                bpm: 100,
+                musicTrack: {
+                    lead: [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 329.63, 293.66],
+                    bass: [130.81, 130.81, 164.81, 164.81, 174.61, 174.61, 196.00, 196.00]
+                },
+                allowedKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', 'ç']
+            },
+            medium: {
+                name: 'Médio',
+                speed: 3.5,
+                spawnRate: 850,
+                bpm: 130,
+                musicTrack: {
+                    lead: [440.00, 523.25, 587.33, 659.25, 587.33, 523.25, 440.00, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 659.25, 587.33],
+                    bass: [220.00, 220.00, 261.63, 261.63, 293.66, 293.66, 196.00, 196.00]
+                },
+                allowedKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', 'ç', 'q', 'w', 'e', 'r', 'u', 'i', 'o', 'p']
+            },
+            hard: {
+                name: 'Avançado',
+                speed: 4.8,
+                spawnRate: 600,
+                bpm: 160,
+                musicTrack: {
+                    lead: [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 587.33, 698.46, 880.00, 698.46, 587.33, 523.25, 659.25, 783.99, 987.77, 880.00],
+                    bass: [130.81, 174.61, 196.00, 220.00, 130.81, 174.61, 196.00, 246.94]
+                },
+                allowedKeys: ['q', 'a', 'z', 'w', 's', 'x', 'e', 'd', 'c', 'r', 'f', 'v', 't', 'g', 'b', 'u', 'j', 'm', 'y', 'h', 'n', 'i', 'k', ',', 'o', 'l', '.', 'p', 'ç', ';', '/']
+            }
+        };
+
+        // Estado do Jogo
+        let gameState = 'IDLE'; // 'IDLE', 'RUNNING', 'PAUSED', 'GAME_OVER'
+        let currentDifficulty = 'easy';
+        let currentPhase = 1;
+        const MAX_LIVES = 3;
+        const HITS_PER_LIFE = 6; // A cada 6 acertos consecutivos, regenera 1 vida
+        let lives = MAX_LIVES;
+        let consecutiveHitsForHeal = 0;
+        let notes = [];
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let totalHits = 0;
+        let totalMisses = 0;
+
+        let baseGameSpeed = difficultyPresets.easy.speed;
+        let gameSpeed = baseGameSpeed;
+        let spawnRate = difficultyPresets.easy.spawnRate;
+        let gameLoopId = null;
+        let spawnIntervalId = null;
+
+        // Elementos DOM
+        const lanesContainer = document.getElementById('lanes-container');
+        const levelDisplay = document.getElementById('level-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const comboDisplay = document.getElementById('combo-display');
+        const accDisplay = document.getElementById('acc-display');
+        const feedbackText = document.getElementById('feedback-text');
+        const overlayScreen = document.getElementById('overlay-screen');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+
+        function setLayout(layoutId) {
+            if (!keyboardLayouts[layoutId]) return;
+            currentLayout = layoutId;
+            const layout = keyboardLayouts[layoutId];
+
+            // 1. Atualizar botões de seleção de layout (Header e Overlay)
+            ['abnt2', 'us', 'dvorak'].forEach(id => {
+                const headerBtn = document.getElementById(`header-layout-${id}`);
+                const overlayBtn = document.getElementById(`overlay-layout-${id}`);
+                const isActive = (id === layoutId);
+
+                if (headerBtn) {
+                    headerBtn.className = isActive 
+                        ? 'px-2 py-1 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500 font-bold transition-all shadow-sm shadow-cyan-500/30'
+                        : 'px-2 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:text-slate-200';
+                }
+                if (overlayBtn) {
+                    overlayBtn.className = isActive
+                        ? 'px-3 py-1.5 rounded-xl border border-cyan-400 bg-cyan-950/90 text-cyan-300 font-bold text-xs ring-2 ring-cyan-500/40 shadow-lg transition-all'
+                        : 'px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-slate-800 hover:text-slate-200 transition-all';
+                }
+            });
+
+            // 2. Atualizar rótulos da Hit Zone (Linha de Acerto)
+            layout.hitZoneLabels.forEach((label, idx) => {
+                const labelEl = document.getElementById(`hit-label-${idx}`);
+                if (labelEl) labelEl.textContent = label;
+            });
+
+            // 3. Atualizar teclas do Teclado Virtual no Rodapé
+            if (layout.virtualKeys) {
+                layout.virtualKeys.top.forEach(k => {
+                    const el = document.getElementById(k.id);
+                    if (el && el.children.length >= 2) {
+                        el.children[0].textContent = k.label.toUpperCase();
+                        el.children[1].textContent = k.sub;
+                    }
+                });
+                layout.virtualKeys.home.forEach(k => {
+                    const el = document.getElementById(k.id);
+                    if (el && el.children.length >= 2) {
+                        el.children[0].textContent = k.label.toUpperCase();
+                        el.children[1].textContent = k.sub;
+                    }
+                });
+            }
+
+            // 4. Atualizar Guia de Dedos no Overlay
+            const fingerGuideBox = document.getElementById('finger-guide-box');
+            if (fingerGuideBox) {
+                fingerGuideBox.innerHTML = layout.fingerGuide.map(item => `<div>${item}</div>`).join('');
+            }
+
+            // 5. Atualizar instrução de linha base
+            const homeRowGuideText = document.getElementById('home-row-guide-text');
+            if (homeRowGuideText) {
+                homeRowGuideText.textContent = layout.homeRowDescription;
+            }
+
+            // 6. Atualizar allowedKeys nas dificuldades conforme o layout
+            difficultyPresets.easy.allowedKeys = layout.easyKeys;
+            difficultyPresets.medium.allowedKeys = layout.mediumKeys;
+            difficultyPresets.hard.allowedKeys = layout.hardKeys;
+
+            try {
+                localStorage.setItem('typehero_layout', layoutId);
+            } catch (e) {}
+        }
+
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            const preset = difficultyPresets[level];
+            baseGameSpeed = preset.speed;
+            gameSpeed = baseGameSpeed;
+            spawnRate = preset.spawnRate;
+            currentPhase = 1;
+
+            levelDisplay.textContent = `${preset.name} (Fase ${currentPhase})`;
+
+            // Atualizar estilo visual dos botões de seleção
+            const buttons = {
+                easy: document.getElementById('diff-btn-easy'),
+                medium: document.getElementById('diff-btn-medium'),
+                hard: document.getElementById('diff-btn-hard')
+            };
+
+            Object.keys(buttons).forEach(key => {
+                if (!buttons[key]) return;
+                if (key === level) {
+                    buttons[key].className = 'diff-btn px-4 py-2 rounded-xl border border-cyan-400 bg-cyan-950/80 text-cyan-300 font-bold text-xs ring-2 ring-cyan-500/50 transition-all';
+                } else {
+                    buttons[key].className = 'diff-btn px-4 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 font-bold text-xs hover:bg-slate-800 transition-all';
+                }
+            });
+        }
+
+        // Audio Context & Synthesizer State
+        let audioCtx = null;
+        let musicIntervalId = null;
+        let musicStep = 0;
+        let isMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function play8BitNote(freq, type = 'square', duration = 0.12, volume = 0.08) {
+            if (isMuted || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playNoisePercussion(type = 'snare') {
+            if (isMuted || !audioCtx) return;
+
+            const bufferSize = audioCtx.sampleRate * 0.05;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = type === 'kick' ? 'lowpass' : 'highpass';
+            filter.frequency.value = type === 'kick' ? 120 : 1000;
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(type === 'kick' ? 0.15 : 0.06, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            noise.start();
+        }
+
+        function start8BitMusic() {
+            stop8BitMusic();
+            initAudio();
+
+            const track = difficultyPresets[currentDifficulty].musicTrack;
+            const bpm = difficultyPresets[currentDifficulty].bpm;
+            const intervalMs = (60 / bpm / 2) * 1000;
+
+            musicStep = 0;
+            musicIntervalId = setInterval(() => {
+                if (gameState !== 'RUNNING') return;
+
+                const leadFreq = track.lead[musicStep % track.lead.length];
+                const bassFreq = track.bass[musicStep % track.bass.length];
+
+                play8BitNote(leadFreq, 'square', 0.14, 0.07);
+
+                if (musicStep % 2 === 0) {
+                    play8BitNote(bassFreq, 'triangle', 0.2, 0.12);
+                }
+
+                if (musicStep % 4 === 0) {
+                    playNoisePercussion('kick');
+                } else if (musicStep % 4 === 2) {
+                    playNoisePercussion('snare');
+                } else {
+                    playNoisePercussion('hihat');
+                }
+
+                musicStep++;
+            }, intervalMs);
+        }
+
+        function stop8BitMusic() {
+            if (musicIntervalId) {
+                clearInterval(musicIntervalId);
+                musicIntervalId = null;
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('audio-icon').textContent = isMuted ? '🔇' : '🔊';
+        }
+
+        function startGame() {
+            initAudio();
+            // Resetar variáveis
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            totalHits = 0;
+            totalMisses = 0;
+            lives = MAX_LIVES;
+            consecutiveHitsForHeal = 0;
+            currentPhase = 1;
+            gameSpeed = baseGameSpeed;
+            notes.forEach(n => n.element.remove());
+            notes = [];
+            gameState = 'RUNNING';
+
+            const preset = difficultyPresets[currentDifficulty];
+            levelDisplay.textContent = `${preset.name} (Fase ${currentPhase})`;
+
+            // Restaurar visual da tela inicial / overlay
+            document.getElementById('game-over-summary').classList.add('hidden');
+            document.getElementById('finger-guide-box').classList.remove('hidden');
+            overlayTitle.innerHTML = 'TOUCH TYPING HERO';
+            overlayDesc.innerHTML = `Escolha o layout, a dificuldade e posicione seus dedos na linha de descanso (<span id="home-row-guide-text" class="text-cyan-400 font-bold">${keyboardLayouts[currentLayout].homeRowDescription}</span>).`;
+            const overlayBtn = document.getElementById('overlay-action-btn');
+            overlayBtn.textContent = 'COMEÇAR AGORA';
+            overlayBtn.onclick = startGame;
+
+            updateHUD();
+            overlayScreen.classList.add('hidden');
+            startBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+            pauseBtn.textContent = 'Pausar';
+
+            // Iniciar loops principais e trilha 8-bit
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+
+            gameLoopId = requestAnimationFrame(updateGame);
+            spawnIntervalId = setInterval(spawnNote, spawnRate);
+            start8BitMusic();
+        }
+
+        function togglePause() {
+            if (gameState === 'RUNNING') {
+                gameState = 'PAUSED';
+                clearInterval(spawnIntervalId);
+                stop8BitMusic();
+                pauseBtn.textContent = 'Retomar';
+                overlayScreen.classList.remove('hidden');
+                overlayTitle.textContent = 'JOGO PAUSADO';
+                overlayDesc.textContent = 'Respire fundo e prepare os dedos.';
+                document.getElementById('game-over-summary').classList.add('hidden');
+                document.getElementById('finger-guide-box').classList.remove('hidden');
+                const overlayBtn = document.getElementById('overlay-action-btn');
+                overlayBtn.textContent = 'CONTINUAR ▶';
+                overlayBtn.onclick = togglePause;
+            } else if (gameState === 'PAUSED') {
+                gameState = 'RUNNING';
+                spawnIntervalId = setInterval(spawnNote, spawnRate);
+                start8BitMusic();
+                pauseBtn.textContent = 'Pausar';
+                overlayScreen.classList.add('hidden');
+                gameLoopId = requestAnimationFrame(updateGame);
+            }
+        }
+
+        function playHitSound(quality) {
+            if (isMuted || !audioCtx) return;
+            const freq = quality === 'PERFECT!' ? 880 : quality === 'GOOD!' ? 660 : 440;
+            play8BitNote(freq, 'square', 0.08, 0.1);
+        }
+
+        function playMissSound() {
+            if (isMuted || !audioCtx) return;
+            play8BitNote(150, 'sawtooth', 0.15, 0.08);
+        }
+
+        function playGameOverSound() {
+            if (isMuted || !audioCtx) return;
+            const notesSequence = [
+                { freq: 349.23, duration: 0.18, type: 'sawtooth' },
+                { freq: 311.13, duration: 0.18, type: 'sawtooth' },
+                { freq: 277.18, duration: 0.22, type: 'sawtooth' },
+                { freq: 220.00, duration: 0.55, type: 'sawtooth' }
+            ];
+            notesSequence.forEach((n, idx) => {
+                setTimeout(() => {
+                    play8BitNote(n.freq, n.type, n.duration, 0.14);
+                }, idx * 170);
+            });
+        }
+
+        function playHealSound() {
+            if (isMuted || !audioCtx) return;
+            // Efeito sonoro alegre ascendente 8-bit para cura de vida
+            const healNotes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            healNotes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    play8BitNote(freq, 'triangle', 0.12, 0.14);
+                }, idx * 60);
+            });
+        }
+
+        function flashScreenHeal() {
+            const arena = document.getElementById('game-arena');
+            if (arena) {
+                arena.classList.add('border-emerald-400', 'shadow-[0_0_35px_rgba(52,211,153,0.7)]');
+                setTimeout(() => {
+                    arena.classList.remove('border-emerald-400', 'shadow-[0_0_35px_rgba(52,211,153,0.7)]');
+                }, 300);
+            }
+        }
+
+        function flashScreenDamage() {
+            const arena = document.getElementById('game-arena');
+            if (arena) {
+                arena.classList.add('damage-shake', 'border-rose-500', 'shadow-[0_0_35px_rgba(244,63,94,0.6)]');
+                setTimeout(() => {
+                    arena.classList.remove('damage-shake', 'border-rose-500', 'shadow-[0_0_35px_rgba(244,63,94,0.6)]');
+                }, 250);
+            }
+        }
+
+        function spawnNote() {
+            if (gameState !== 'RUNNING') return;
+
+            const allowedKeys = difficultyPresets[currentDifficulty].allowedKeys;
+            
+            const randomKey = allowedKeys[Math.floor(Math.random() * allowedKeys.length)];
+            const layout = keyboardLayouts[currentLayout];
+            const lane = layout.keyToLaneMap[randomKey];
+            if (!lane) return;
+
+            const laneIndex = lane.id;
+            const letter = randomKey.toUpperCase();
+
+            const noteEl = document.createElement('div');
+            noteEl.className = `absolute w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold text-base shadow-lg ${lane.color} backdrop-blur-md transition-transform duration-75`;
+            noteEl.style.top = '-50px';
+            
+            // Ajustado para refletir o espaçamento interno do container de pistas (inset-x-8)
+            const laneWidthPercent = 100 / 8;
+            noteEl.style.left = `calc(${laneIndex * laneWidthPercent}% + (${laneWidthPercent}% - 40px) / 2)`;
+            noteEl.textContent = letter;
+
+            lanesContainer.children[laneIndex].appendChild(noteEl);
+
+            notes.push({
+                element: noteEl,
+                laneIndex: laneIndex,
+                letter: letter,
+                y: -50,
+                hit: false
+            });
+        }
+
+        function updateGame() {
+            if (gameState !== 'RUNNING') return;
+
+            const arenaHeight = lanesContainer.clientHeight;
+
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let note = notes[i];
+                if (note.hit) continue;
+
+                note.y += gameSpeed;
+                note.element.style.top = `${note.y}px`;
+
+                if (note.y > arenaHeight - 40) {
+                    note.element.remove();
+                    notes.splice(i, 1);
+                    registerMiss();
+                    if (gameState !== 'RUNNING') break;
+                }
+            }
+
+            if (gameState === 'RUNNING') {
+                gameLoopId = requestAnimationFrame(updateGame);
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState === 'GAME_OVER') {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    startGame();
+                }
+                return;
+            }
+
+            if (gameState === 'PAUSED') {
+                if (e.key === 'Escape' || e.key === 'p' || e.key === 'P' || e.key === ' ') {
+                    e.preventDefault();
+                    togglePause();
+                }
+                return;
+            }
+
+            if (gameState !== 'RUNNING') return;
+
+            if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                togglePause();
+                return;
+            }
+
+            let key = e.key.toLowerCase();
+            if (currentLayout === 'abnt2' && (key === 'dead' || key === '~')) {
+                key = 'ç';
+            }
+
+            highlightVirtualKey(key);
+
+            const layout = keyboardLayouts[currentLayout];
+            const lane = layout.keyToLaneMap[key];
+            if (!lane) return;
+
+            const arenaHeight = lanesContainer.clientHeight;
+
+            let targetNoteIndex = -1;
+            let closestDistance = Infinity;
+
+            for (let i = 0; i < notes.length; i++) {
+                let note = notes[i];
+                if (!note.hit && note.laneIndex === lane.id && note.letter.toLowerCase() === key) {
+                    let distance = Math.abs(note.y - (arenaHeight - 110));
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        targetNoteIndex = i;
+                    }
+                }
+            }
+
+            if (targetNoteIndex !== -1 && closestDistance < 60) {
+                let note = notes[targetNoteIndex];
+                note.hit = true;
+                note.element.style.transform = 'scale(1.4)';
+                note.element.style.opacity = '0';
+                setTimeout(() => note.element.remove(), 150);
+                notes.splice(targetNoteIndex, 1);
+
+                let hitQuality = 'OK';
+                if (closestDistance < 20) {
+                    hitQuality = 'PERFECT!';
+                    triggerFeedback('PERFECT!', 'text-cyan-400');
+                    score += 100 * (Math.floor(combo / 10) + 1);
+                } else if (closestDistance < 40) {
+                    hitQuality = 'GOOD!';
+                    triggerFeedback('GOOD!', 'text-emerald-400');
+                    score += 50 * (Math.floor(combo / 10) + 1);
+                } else {
+                    triggerFeedback('OK', 'text-yellow-400');
+                    score += 25 * (Math.floor(combo / 10) + 1);
+                }
+
+                playHitSound(hitQuality);
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                totalHits++;
+
+                // SISTEMA DE REGENERAÇÃO DE VIDA:
+                // A cada 6 acertos consecutivos, regenera 1 vida mantendo o limite máximo de 3
+                consecutiveHitsForHeal++;
+                if (consecutiveHitsForHeal >= HITS_PER_LIFE) {
+                    consecutiveHitsForHeal = 0;
+                    if (lives < MAX_LIVES) {
+                        lives++;
+                        playHealSound();
+                        flashScreenHeal();
+                        triggerFeedback('+1 VIDA! ❤️ (REGENERAÇÃO)', 'text-emerald-400 font-extrabold');
+                    } else {
+                        // Se já está com 3 vidas, mantém 3
+                        triggerFeedback('VIDA MÁXIMA! 💖 (3/3)', 'text-pink-400 font-bold');
+                    }
+                }
+
+                // Sistema de progressão de fases baseado no número de acertos / combo
+                checkPhaseProgression();
+
+                updateHUD();
+            } else {
+                registerMiss();
+            }
+        });
+
+        function checkPhaseProgression() {
+            // A cada 10 acertos consecutivos, sobe de fase e acelera a queda das letras
+            let calculatedPhase = Math.floor(totalHits / 10) + 1;
+            if (calculatedPhase > currentPhase) {
+                currentPhase = calculatedPhase;
+                // Aumenta a velocidade progressivamente (+0.4 por fase)
+                gameSpeed = baseGameSpeed + ((currentPhase - 1) * 0.4);
+                
+                const preset = difficultyPresets[currentDifficulty];
+                levelDisplay.textContent = `${preset.name} (Fase ${currentPhase})`;
+                triggerFeedback(`FASE ${currentPhase}! 🚀`, 'text-pink-400');
+            }
+        }
+
+        function registerMiss() {
+            if (gameState !== 'RUNNING') return;
+
+            combo = 0;
+            consecutiveHitsForHeal = 0; // Resetar contador de regeneração ao errar
+            totalMisses++;
+            lives--;
+            playMissSound();
+            flashScreenDamage();
+            updateHUD();
+
+            if (lives <= 0) {
+                triggerGameOver();
+            } else {
+                triggerFeedback(`ERRO! (-1 ❤️)`, 'text-red-500');
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAME_OVER';
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
+            if (spawnIntervalId) {
+                clearInterval(spawnIntervalId);
+                spawnIntervalId = null;
+            }
+            stop8BitMusic();
+            playGameOverSound();
+
+            // Limpar notas pendentes na tela
+            notes.forEach(n => n.element.remove());
+            notes = [];
+
+            // Exibir Game Over no Overlay
+            overlayScreen.classList.remove('hidden');
+            overlayTitle.innerHTML = '<span class="text-rose-500 filter drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]">GAME OVER</span>';
+            overlayDesc.innerHTML = 'Você cometeu 3 erros e suas vidas se esgotaram!<br><span class="text-slate-400 text-xs">Confira seus resultados abaixo:</span>';
+
+            // Atualizar estatísticas finais
+            let totalAttempts = totalHits + totalMisses;
+            let accuracy = totalAttempts > 0 ? Math.round((totalHits / totalAttempts) * 100) : 100;
+
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-phase').textContent = `Fase ${currentPhase}`;
+            document.getElementById('final-combo').textContent = `${maxCombo}x`;
+            document.getElementById('final-acc').textContent = `${accuracy}%`;
+
+            document.getElementById('game-over-summary').classList.remove('hidden');
+            document.getElementById('finger-guide-box').classList.add('hidden');
+
+            const overlayBtn = document.getElementById('overlay-action-btn');
+            overlayBtn.textContent = 'JOGAR NOVAMENTE 🔄';
+            overlayBtn.onclick = startGame;
+
+            startBtn.classList.remove('hidden');
+            startBtn.textContent = 'JOGAR NOVAMENTE';
+            pauseBtn.classList.add('hidden');
+
+            triggerFeedback('GAME OVER 💀', 'text-red-500');
+        }
+
+        function triggerFeedback(text, colorClass) {
+            feedbackText.textContent = text;
+            feedbackText.className = `arcade-font text-2xl font-black tracking-widest transition-transform duration-150 scale-125 ${colorClass}`;
+            setTimeout(() => {
+                feedbackText.style.opacity = '1';
+            }, 10);
+            setTimeout(() => {
+                feedbackText.style.opacity = '0';
+            }, 200);
+        }
+
+        function updateHUD() {
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo + 'x';
+
+            let totalAttempts = totalHits + totalMisses;
+            let accuracy = totalAttempts > 0 ? Math.round((totalHits / totalAttempts) * 100) : 100;
+            accDisplay.textContent = accuracy + '%';
+
+            // Atualização visual das vidas com corações neon
+            const livesDisplay = document.getElementById('lives-display');
+            if (livesDisplay) {
+                let heartsHtml = '';
+                for (let i = 0; i < MAX_LIVES; i++) {
+                    if (i < lives) {
+                        heartsHtml += `
+                            <svg class="w-5 h-5 md:w-6 md:h-6 text-rose-500 fill-current drop-shadow-[0_0_8px_rgba(244,63,94,0.85)] heart-pulse transition-all duration-300" viewBox="0 0 24 24">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>`;
+                    } else {
+                        heartsHtml += `
+                            <svg class="w-5 h-5 md:w-6 md:h-6 text-slate-700/60 fill-current opacity-40 transition-all duration-300 scale-90" viewBox="0 0 24 24">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>`;
+                    }
+                }
+                livesDisplay.innerHTML = heartsHtml;
+            }
+
+            // Atualização da barra de regeneração (a cada 6 acertos)
+            const healProgressBar = document.getElementById('heal-progress-bar');
+            const healProgressText = document.getElementById('heal-progress-text');
+            if (healProgressBar && healProgressText) {
+                const percent = Math.min(100, Math.round((consecutiveHitsForHeal / HITS_PER_LIFE) * 100));
+                healProgressBar.style.width = `${percent}%`;
+                healProgressText.textContent = `${consecutiveHitsForHeal}/${HITS_PER_LIFE}`;
+                if (consecutiveHitsForHeal === 5) {
+                    healProgressText.className = 'text-[9px] font-black text-yellow-400 animate-pulse tracking-tighter';
+                } else {
+                    healProgressText.className = 'text-[9px] font-bold text-emerald-400 tracking-tighter';
+                }
+            }
+        }
+
+        function highlightVirtualKey(key) {
+            const layout = keyboardLayouts[currentLayout];
+            let targetId = null;
+
+            if (layout && layout.virtualKeys) {
+                const allKeys = [...layout.virtualKeys.top, ...layout.virtualKeys.home];
+                const found = allKeys.find(k => k.label.toLowerCase() === key.toLowerCase());
+                if (found) targetId = found.id;
+            }
+
+            if (!targetId) {
+                if (key === ';' || key === 'ç') targetId = 'key-SEMICOLON';
+                else targetId = 'key-' + key.toUpperCase();
+            }
+
+            const keyEl = document.getElementById(targetId);
+            if (keyEl) {
+                keyEl.classList.add('bg-slate-700', 'scale-95', 'border-cyan-400');
+                setTimeout(() => {
+                    keyEl.classList.remove('bg-slate-700', 'scale-95', 'border-cyan-400');
+                }, 120);
+            }
+        }
+
+        // Inicializar layout salvo ou padrão, botões de dificuldade e HUD
+        let initialLayout = 'abnt2';
+        try {
+            initialLayout = localStorage.getItem('typehero_layout') || 'abnt2';
+        } catch(e) {}
+
+        setLayout(initialLayout);
+        setDifficulty('easy');
+        updateHUD();
+    </script>
+</body>
+</html>
